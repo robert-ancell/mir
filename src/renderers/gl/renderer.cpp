@@ -252,6 +252,89 @@ private:
     std::mutex compilation_mutex;
 };
 
+const GLchar* fullscreen_vertex_shader_src =
+    "attribute vec2 position;\n"
+//    "attribute vec2 texcoord;\n"
+//    "varying vec2 v_texcoord;\n"
+    "void main() {\n"
+    "   gl_Position = vec4(position, 0, 1); \n"
+//    "   v_texcoord = texcoord;\n"
+    "}\n";
+
+const GLchar* fullscreen_fragment_shader_src =
+    "#ifdef GL_ES\n"
+    "precision mediump float;\n"
+    "#endif\n"
+//    "varying vec2 v_texcoord;\n"
+    "void main() {\n"
+    "   gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);\n"
+    "}\n";
+
+class mrg::Renderer::FullscreenProgramFactory
+{
+public:
+    // NOTE: This must be called with a current GL context
+    FullscreenProgramFactory()
+        : vertex_shader{compile_shader(GL_VERTEX_SHADER, fullscreen_vertex_shader_src)},
+        fragment_shader{compile_shader(GL_FRAGMENT_SHADER, fullscreen_fragment_shader_src)},
+        program{link_shader(vertex_shader, fragment_shader)}
+    {
+    }
+
+    // Note: shaders public to avoid ordering - can rework.
+    ShaderHandle const vertex_shader;
+    ShaderHandle const fragment_shader;
+    ProgramHandle const program;
+
+private:
+    static GLuint compile_shader(GLenum type, GLchar const* src)
+    {
+        GLuint id = glCreateShader(type);
+        if (!id)
+        {
+            BOOST_THROW_EXCEPTION(mg::gl_error("Failed to create shader"));
+        }
+
+        glShaderSource(id, 1, &src, NULL);
+        glCompileShader(id);
+        GLint ok;
+        glGetShaderiv(id, GL_COMPILE_STATUS, &ok);
+        if (!ok)
+        {
+            GLchar log[1024] = "(No log info)";
+            glGetShaderInfoLog(id, sizeof log, NULL, log);
+            glDeleteShader(id);
+            BOOST_THROW_EXCEPTION(
+                std::runtime_error(
+                    std::string("Compile failed: ") + log + " for:\n" + src));
+        }
+        return id;
+    }
+
+    static ProgramHandle link_shader(
+        ShaderHandle const& vertex_shader,
+        ShaderHandle const& fragment_shader)
+    {
+        ProgramHandle program{glCreateProgram()};
+        glAttachShader(program, fragment_shader);
+        glAttachShader(program, vertex_shader);
+        glLinkProgram(program);
+        GLint ok;
+        glGetProgramiv(program, GL_LINK_STATUS, &ok);
+        if (!ok)
+        {
+            GLchar log[1024];
+            glGetProgramInfoLog(program, sizeof log - 1, NULL, log);
+            log[sizeof log - 1] = '\0';
+            BOOST_THROW_EXCEPTION(
+                std::runtime_error(
+                    std::string("Linking GL shader failed: ") + log));
+        }
+
+        return program;
+    }
+};
+
 mrg::Renderer::Program::Program(GLuint program_id)
 {
     id = program_id;
@@ -287,6 +370,7 @@ mrg::Renderer::Renderer(
     : output_surface{make_output_current(std::move(output))},
       clear_color{0.0f, 0.0f, 0.0f, 1.0f},
       program_factory{std::make_unique<ProgramFactory>()},
+      fullscreen_program_factory{std::make_unique<FullscreenProgramFactory>()},
       display_transform(1),
       gl_interface{std::move(gl_interface)}
 {
@@ -338,6 +422,8 @@ mrg::Renderer::Renderer(
                   rbits, gbits, bbits, abits, dbits, sbits);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    // FIXME: Generate programs
 }
 
 mrg::Renderer::~Renderer()
@@ -354,8 +440,32 @@ void mrg::Renderer::tessellate(std::vector<mgl::Primitive>& primitives,
 auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::unique_ptr<mg::Framebuffer>
 {
     output_surface->make_current();
-    output_surface->bind();
 
+    //auto size = output_surface->size();
+    //auto width = size.width.as_value();
+    //auto height = size.height.as_value();   
+
+   (void)renderables;
+#if 0   
+    // Render into a texture.
+    GLuint tex;
+    glGenTextures(1, &tex);
+    glBindTexture(GL_TEXTURE_2D, tex);
+    glTexImage2D(GL_TEXTURE_2D, 0,
+		                  GL_RGBA,
+		                  width,
+		                  height,
+		                  0,
+		                  GL_RGBA,
+		                  GL_UNSIGNED_BYTE,
+		 NULL);
+
+    GLuint fb;
+    glGenFramebuffers(1, &fb);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
+    glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+
+    // Render elements.
     glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -365,6 +475,25 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
     {
         draw(*r);
     }
+#endif
+
+    output_surface->bind();
+
+    GLint position_attrib = glGetAttribLocation(fullscreen_program_factory->program, "position");
+    //GLint texcoord_attrib = glGetAttribLocation(fullscreen_program_factory->program, "texcoord");
+    glEnableVertexAttribArray(position_attrib);
+    //glEnableVertexAttribArray(texcoord_attrib);
+
+     //GLfloat vertices[] = {0, 0, static_cast<GLfloat>(width) * 2, 0, 0, static_cast<GLfloat>(height) * 2};
+    GLfloat vertices[] = {-1, -1, 2, -1, -1, 2};
+    //GLfloat tex_coords[] = {0, 0, 1, 0, 0, 1};
+    glVertexAttribPointer(position_attrib, 2, GL_FLOAT, GL_FALSE, 0, vertices);
+    //glVertexAttribPointer(texcoord_attrib, 2, GL_FLOAT, GL_FALSE, 0, tex_coords);
+
+    glUseProgram(fullscreen_program_factory->program);
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+   
+    //glDeleteTextures(1, &tex);
 
     auto output = output_surface->commit();
 

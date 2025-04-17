@@ -104,6 +104,8 @@ private:
 
     class ProgramFactory;
     std::unique_ptr<ProgramFactory> const program_factory;
+    class FullscreenProgramFactory;
+    std::unique_ptr<FullscreenProgramFactory> const fullscreen_program_factory;
     geometry::Rectangle viewport;
     glm::mat4 screen_to_gl_coords;
     glm::mat4 display_transform;
