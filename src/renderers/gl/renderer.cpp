@@ -485,8 +485,8 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
     //glEnableVertexAttribArray(texcoord_attrib);
 
      //GLfloat vertices[] = {0, 0, static_cast<GLfloat>(width) * 2, 0, 0, static_cast<GLfloat>(height) * 2};
-    GLfloat vertices[] = {-1, -1, 2, -1, -1, 2};
-    //GLfloat tex_coords[] = {0, 0, 1, 0, 0, 1};
+    GLfloat vertices[] = {-1, -1, 4, -1, -1, 4};
+    //GLfloat tex_coords[] = {0, 0, 2, 0, 0, 2};
     glVertexAttribPointer(position_attrib, 2, GL_FLOAT, GL_FALSE, 0, vertices);
     //glVertexAttribPointer(texcoord_attrib, 2, GL_FLOAT, GL_FALSE, 0, tex_coords);
 
