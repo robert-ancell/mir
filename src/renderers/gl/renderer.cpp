@@ -85,6 +85,43 @@ private:
 using ProgramHandle = GLHandle<&glDeleteProgram>;
 using ShaderHandle = GLHandle<&glDeleteShader>;
 
+template<void (* deleter)(GLsizei, const GLuint*)>
+class GLMultiHandle
+{
+public:
+    explicit GLMultiHandle(GLuint id)
+        : id{id}
+    {
+    }
+
+    ~GLMultiHandle()
+    {
+        if (id)
+            (*deleter)(1, &id);
+    }
+
+    GLMultiHandle(GLMultiHandle const&) = delete;
+
+    GLMultiHandle& operator=(GLMultiHandle const&) = delete;
+
+    GLMultiHandle(GLMultiHandle&& from)
+        : id{from.id}
+    {
+        from.id = 0;
+    }
+
+    operator GLuint() const
+    {
+        return id;
+    }
+
+private:
+    GLuint id;
+};
+
+using TextureHandle = GLMultiHandle<&glDeleteTextures>;
+using FramebufferHandle = GLMultiHandle<&glDeleteFramebuffers>;
+
 struct Program : public mir::graphics::gl::Program
 {
 public:
@@ -274,10 +311,12 @@ class mrg::Renderer::FullscreenProgramFactory
 {
 public:
     // NOTE: This must be called with a current GL context
-    FullscreenProgramFactory()
+    FullscreenProgramFactory(GLsizei width, GLsizei height)
         : vertex_shader{compile_shader(GL_VERTEX_SHADER, fullscreen_vertex_shader_src)},
         fragment_shader{compile_shader(GL_FRAGMENT_SHADER, fullscreen_fragment_shader_src)},
-        program{link_shader(vertex_shader, fragment_shader)}
+        program{link_shader(vertex_shader, fragment_shader)},
+        texture{make_texture(width, height)},
+        framebuffer{make_framebuffer(texture)}
     {
     }
 
@@ -285,6 +324,13 @@ public:
     ShaderHandle const vertex_shader;
     ShaderHandle const fragment_shader;
     ProgramHandle const program;
+    TextureHandle const texture;
+    FramebufferHandle const framebuffer;
+
+    void bind() 
+     {
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
+     }
 
 private:
     static GLuint compile_shader(GLenum type, GLchar const* src)
@@ -333,6 +379,32 @@ private:
 
         return program;
     }
+
+   static GLuint make_texture(GLsizei width, GLsizei height)
+     {
+	GLuint tex;
+	glGenTextures(1, &tex);
+	glBindTexture(GL_TEXTURE_2D, tex);
+	glTexImage2D(GL_TEXTURE_2D, 0,
+		     GL_RGBA,
+		     width,
+		     height,
+		     0,
+		     GL_RGBA,
+		     GL_UNSIGNED_BYTE,
+		     NULL);
+	return tex;
+     }
+
+   static GLuint make_framebuffer(GLuint tex)
+     {
+	GLuint fb;
+	glGenFramebuffers(1, &fb);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
+	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); // FIXME: Restore existing or bad assumption in parent code?
+	return fb;
+     }
 };
 
 mrg::Renderer::Program::Program(GLuint program_id)
@@ -370,7 +442,7 @@ mrg::Renderer::Renderer(
     : output_surface{make_output_current(std::move(output))},
       clear_color{0.0f, 0.0f, 0.0f, 1.0f},
       program_factory{std::make_unique<ProgramFactory>()},
-      fullscreen_program_factory{std::make_unique<FullscreenProgramFactory>()},
+      fullscreen_program_factory{std::make_unique<FullscreenProgramFactory>(100, 100/*output->size().width.as_value(), output->size().height.as_value()*/)},
       display_transform(1),
       gl_interface{std::move(gl_interface)}
 {
@@ -422,8 +494,6 @@ mrg::Renderer::Renderer(
                   rbits, gbits, bbits, abits, dbits, sbits);
 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    // FIXME: Generate programs
 }
 
 mrg::Renderer::~Renderer()
@@ -441,29 +511,8 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
 {
     output_surface->make_current();
 
-    //auto size = output_surface->size();
-    //auto width = size.width.as_value();
-    //auto height = size.height.as_value();   
-
-   (void)renderables;
-#if 0   
-    // Render into a texture.
-    GLuint tex;
-    glGenTextures(1, &tex);
-    glBindTexture(GL_TEXTURE_2D, tex);
-    glTexImage2D(GL_TEXTURE_2D, 0,
-		                  GL_RGBA,
-		                  width,
-		                  height,
-		                  0,
-		                  GL_RGBA,
-		                  GL_UNSIGNED_BYTE,
-		 NULL);
-
-    GLuint fb;
-    glGenFramebuffers(1, &fb);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
-    glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+   (void) renderables;
+   fullscreen_program_factory->bind();
 
     // Render elements.
     glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
@@ -475,7 +524,7 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
     {
         draw(*r);
     }
-#endif
+   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
     output_surface->bind();
 
