@@ -254,20 +254,20 @@ private:
 
 const GLchar* fullscreen_vertex_shader_src =
     "attribute vec2 position;\n"
-//    "attribute vec2 texcoord;\n"
-//    "varying vec2 v_texcoord;\n"
+    "attribute vec2 texcoord;\n"
+    "varying vec2 v_texcoord;\n"
     "void main() {\n"
     "   gl_Position = vec4(position, 0, 1); \n"
-//    "   v_texcoord = texcoord;\n"
+    "   v_texcoord = texcoord;\n"
     "}\n";
 
 const GLchar* fullscreen_fragment_shader_src =
     "#ifdef GL_ES\n"
     "precision mediump float;\n"
     "#endif\n"
-//    "varying vec2 v_texcoord;\n"
+    "varying vec2 v_texcoord;\n"
     "void main() {\n"
-    "   gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);\n"
+    "   gl_FragColor = vec4(v_texcoord[0], v_texcoord[1], 0.0, 1.0);\n"
     "}\n";
 
 class mrg::Renderer::FullscreenProgramFactory
@@ -479,18 +479,18 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
 
     output_surface->bind();
 
-    GLint position_attrib = glGetAttribLocation(fullscreen_program_factory->program, "position");
-    //GLint texcoord_attrib = glGetAttribLocation(fullscreen_program_factory->program, "texcoord");
+    GLuint program = fullscreen_program_factory->program;
+    GLint position_attrib = glGetAttribLocation(program, "position");
+    GLint texcoord_attrib = glGetAttribLocation(program, "texcoord");
     glEnableVertexAttribArray(position_attrib);
-    //glEnableVertexAttribArray(texcoord_attrib);
+    glEnableVertexAttribArray(texcoord_attrib);
 
-     //GLfloat vertices[] = {0, 0, static_cast<GLfloat>(width) * 2, 0, 0, static_cast<GLfloat>(height) * 2};
     GLfloat vertices[] = {-1, -1, 4, -1, -1, 4};
-    //GLfloat tex_coords[] = {0, 0, 2, 0, 0, 2};
+    GLfloat tex_coords[] = {0, 0, 2, 0, 0, 2};
     glVertexAttribPointer(position_attrib, 2, GL_FLOAT, GL_FALSE, 0, vertices);
-    //glVertexAttribPointer(texcoord_attrib, 2, GL_FLOAT, GL_FALSE, 0, tex_coords);
+    glVertexAttribPointer(texcoord_attrib, 2, GL_FLOAT, GL_FALSE, 0, tex_coords);
 
-    glUseProgram(fullscreen_program_factory->program);
+    glUseProgram(program);
     glDrawArrays(GL_TRIANGLES, 0, 3);
    
     //glDeleteTextures(1, &tex);
