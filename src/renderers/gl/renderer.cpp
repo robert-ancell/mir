@@ -307,11 +307,12 @@ const GLchar* fullscreen_fragment_shader_src =
     "   gl_FragColor = vec4(v_texcoord[0], v_texcoord[1], 0.0, 1.0);\n"
     "}\n";
 
-class mrg::Renderer::FullscreenProgramFactory
+// FIXME: Namespace?
+class mrg::Renderer::FullscreenShader
 {
 public:
     // NOTE: This must be called with a current GL context
-    FullscreenProgramFactory(GLsizei width, GLsizei height)
+    FullscreenShader(GLsizei width, GLsizei height)
         : vertex_shader{compile_shader(GL_VERTEX_SHADER, fullscreen_vertex_shader_src)},
         fragment_shader{compile_shader(GL_FRAGMENT_SHADER, fullscreen_fragment_shader_src)},
         program{link_shader(vertex_shader, fragment_shader)},
@@ -442,7 +443,7 @@ mrg::Renderer::Renderer(
     : output_surface{make_output_current(std::move(output))},
       clear_color{0.0f, 0.0f, 0.0f, 1.0f},
       program_factory{std::make_unique<ProgramFactory>()},
-      fullscreen_program_factory{std::make_unique<FullscreenProgramFactory>(100, 100/*output->size().width.as_value(), output->size().height.as_value()*/)},
+      fullscreen_shader{std::make_unique<FullscreenShader>(output_surface->size().width.as_value(), output_surface->size().height.as_value())},
       display_transform(1),
       gl_interface{std::move(gl_interface)}
 {
@@ -511,8 +512,7 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
 {
     output_surface->make_current();
 
-   (void) renderables;
-   fullscreen_program_factory->bind();
+    fullscreen_shader->bind();
 
     // Render elements.
     glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
@@ -524,11 +524,13 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
     {
         draw(*r);
     }
-   glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+    // FIXME: Need to return to fb 0, update bind() to do this automatically
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
     output_surface->bind();
 
-    GLuint program = fullscreen_program_factory->program;
+    GLuint program = fullscreen_shader->program;
     GLint position_attrib = glGetAttribLocation(program, "position");
     GLint texcoord_attrib = glGetAttribLocation(program, "texcoord");
     glEnableVertexAttribArray(position_attrib);
