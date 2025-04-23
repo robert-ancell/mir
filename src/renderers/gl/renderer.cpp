@@ -305,7 +305,8 @@ const GLchar* fullscreen_fragment_shader_src =
     "varying vec2 v_texcoord;\n"
     "uniform sampler2D tex;\n"
     "void main() {\n"
-    "   gl_FragColor = texture2D(tex, v_texcoord);\n"
+    "   vec4 col = texture2D(tex, v_texcoord);\n"
+    "   gl_FragColor = vec4(1.0 - col[0], 1.0 - col[1], 1.0 - col[2], col[3]);\n"
     "}\n";
 
 // FIXME: Namespace?
