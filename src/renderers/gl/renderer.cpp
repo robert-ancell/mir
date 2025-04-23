@@ -388,19 +388,6 @@ private:
 	glGenTextures(1, &tex);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, tex);
-	uint8_t *data = static_cast<uint8_t*>(malloc(width * height * 4));
-	uint8_t *p = data;
-	for (GLsizei y = 0; y < height; y++) 
-	  {
-	     for (GLsizei x = 0; x < width; x++) 
-	       {
-		  p[0] = 255 * x / width;
-		  p[1] = 255 * y / width;
-		  p[2] = 255;
-		  p[3] = 255;
-		  p += 4;
-	       }
-	  }
 	glTexImage2D(GL_TEXTURE_2D, 0,
 		     GL_RGBA,
 		     width,
@@ -408,13 +395,12 @@ private:
 		     0,
 		     GL_RGBA,
 		     GL_UNSIGNED_BYTE,
-		     data);
+		     NULL);
 	// WTF: Required?
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	free(data);
 	return tex;
      }
 
@@ -533,11 +519,9 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
 {
     output_surface->make_current();
 
-    //fullscreen_shader->bind();
+    fullscreen_shader->bind();
 
-   (void)renderables;
-#if 0
-    // Render elements.
+   // Render elements.
     glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -550,7 +534,6 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
 
     // FIXME: Need to return to fb 0, update bind() to do this automatically
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-#endif
 
     output_surface->bind();
 
