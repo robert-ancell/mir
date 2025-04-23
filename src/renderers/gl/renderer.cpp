@@ -533,18 +533,16 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
     GLuint program = fullscreen_shader->program;
     GLint position_attrib = glGetAttribLocation(program, "position");
     GLint texcoord_attrib = glGetAttribLocation(program, "texcoord");
-    glEnableVertexAttribArray(position_attrib);
-    glEnableVertexAttribArray(texcoord_attrib);
 
     GLfloat vertices[] = {-1, -1, 4, -1, -1, 4};
     GLfloat tex_coords[] = {0, 0, 2, 0, 0, 2};
+    glEnableVertexAttribArray(position_attrib);
     glVertexAttribPointer(position_attrib, 2, GL_FLOAT, GL_FALSE, 0, vertices);
+    glEnableVertexAttribArray(texcoord_attrib);
     glVertexAttribPointer(texcoord_attrib, 2, GL_FLOAT, GL_FALSE, 0, tex_coords);
 
     glUseProgram(program);
     glDrawArrays(GL_TRIANGLES, 0, 3);
-   
-    //glDeleteTextures(1, &tex);
 
     auto output = output_surface->commit();
 
