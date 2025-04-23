@@ -303,8 +303,9 @@ const GLchar* fullscreen_fragment_shader_src =
     "precision mediump float;\n"
     "#endif\n"
     "varying vec2 v_texcoord;\n"
+    "uniform sampler2D tex;\n"
     "void main() {\n"
-    "   gl_FragColor = vec4(v_texcoord[0], v_texcoord[1], 0.0, 1.0);\n"
+    "   gl_FragColor = texture2D(tex, v_texcoord);\n"
     "}\n";
 
 // FIXME: Namespace?
@@ -385,7 +386,21 @@ private:
      {
 	GLuint tex;
 	glGenTextures(1, &tex);
+	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, tex);
+	uint8_t *data = static_cast<uint8_t*>(malloc(width * height * 4));
+	uint8_t *p = data;
+	for (GLsizei y = 0; y < height; y++) 
+	  {
+	     for (GLsizei x = 0; x < width; x++) 
+	       {
+		  p[0] = 255 * x / width;
+		  p[1] = 255 * y / width;
+		  p[2] = 255;
+		  p[3] = 255;
+		  p += 4;
+	       }
+	  }
 	glTexImage2D(GL_TEXTURE_2D, 0,
 		     GL_RGBA,
 		     width,
@@ -393,7 +408,13 @@ private:
 		     0,
 		     GL_RGBA,
 		     GL_UNSIGNED_BYTE,
-		     NULL);
+		     data);
+	// WTF: Required?
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+	free(data);
 	return tex;
      }
 
@@ -512,8 +533,10 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
 {
     output_surface->make_current();
 
-    fullscreen_shader->bind();
+    //fullscreen_shader->bind();
 
+   (void)renderables;
+#if 0
     // Render elements.
     glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
@@ -527,13 +550,16 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
 
     // FIXME: Need to return to fb 0, update bind() to do this automatically
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+#endif
 
     output_surface->bind();
 
     GLuint program = fullscreen_shader->program;
     GLint position_attrib = glGetAttribLocation(program, "position");
     GLint texcoord_attrib = glGetAttribLocation(program, "texcoord");
+    GLint tex_uniform = glGetUniformLocation(program, "tex");
 
+    // FIXME: Do once in constructor?
     GLfloat vertices[] = {-1, -1, 4, -1, -1, 4};
     GLfloat tex_coords[] = {0, 0, 2, 0, 0, 2};
     glEnableVertexAttribArray(position_attrib);
@@ -542,6 +568,11 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
     glVertexAttribPointer(texcoord_attrib, 2, GL_FLOAT, GL_FALSE, 0, tex_coords);
 
     glUseProgram(program);
+    glUniform1i(tex_uniform, 0);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, fullscreen_shader->texture);
+
     glDrawArrays(GL_TRIANGLES, 0, 3);
 
     auto output = output_surface->commit();
