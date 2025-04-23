@@ -329,10 +329,10 @@ public:
     TextureHandle const texture;
     FramebufferHandle const framebuffer;
 
-    void bind() 
-     {
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
-     }
+    void bind()
+    {
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
+    }
 
 private:
     static GLuint compile_shader(GLenum type, GLchar const* src)
@@ -382,37 +382,34 @@ private:
         return program;
     }
 
-   static GLuint make_texture(GLsizei width, GLsizei height)
-     {
-	GLuint tex;
-	glGenTextures(1, &tex);
-	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, tex);
-	glTexImage2D(GL_TEXTURE_2D, 0,
-		     GL_RGBA,
-		     width,
-		     height,
-		     0,
-		     GL_RGBA,
-		     GL_UNSIGNED_BYTE,
-		     NULL);
-	// WTF: Required?
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	return tex;
-     }
+    static GLuint make_texture(GLsizei width, GLsizei height)
+    {
+        GLuint tex;
+        glGenTextures(1, &tex);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, tex);
+        glTexImage2D(GL_TEXTURE_2D, 0,
+                     GL_RGBA,
+                     width,
+                     height,
+                     0,
+                     GL_RGBA,
+                     GL_UNSIGNED_BYTE,
+                     NULL);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        return tex;
+    }
 
-   static GLuint make_framebuffer(GLuint tex)
-     {
-	GLuint fb;
-	glGenFramebuffers(1, &fb);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
-	glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); // FIXME: Restore existing or bad assumption in parent code?
-	return fb;
-     }
+    static GLuint make_framebuffer(GLuint tex)
+    {
+        GLuint fb;
+        glGenFramebuffers(1, &fb);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
+        glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); // FIXME: Restore existing or bad assumption in parent code?
+        return fb;
+    }
 };
 
 mrg::Renderer::Program::Program(GLuint program_id)
@@ -521,7 +518,7 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
 
     fullscreen_shader->bind();
 
-   // Render elements.
+    // Render elements.
     glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
     glClear(GL_COLOR_BUFFER_BIT);
