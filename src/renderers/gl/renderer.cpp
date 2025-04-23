@@ -298,25 +298,14 @@ const GLchar* fullscreen_vertex_shader_src =
     "   v_texcoord = texcoord;\n"
     "}\n";
 
-const GLchar* fullscreen_fragment_shader_src =
-    "#ifdef GL_ES\n"
-    "precision mediump float;\n"
-    "#endif\n"
-    "varying vec2 v_texcoord;\n"
-    "uniform sampler2D tex;\n"
-    "void main() {\n"
-    "   vec4 col = texture2D(tex, v_texcoord);\n"
-    "   gl_FragColor = vec4(1.0 - col[0], 1.0 - col[1], 1.0 - col[2], col[3]);\n"
-    "}\n";
-
 // FIXME: Namespace?
 class mrg::Renderer::FullscreenShader
 {
 public:
     // NOTE: This must be called with a current GL context
-    FullscreenShader(GLsizei width, GLsizei height)
+    FullscreenShader(GLsizei width, GLsizei height, GLchar const* src)
         : vertex_shader{compile_shader(GL_VERTEX_SHADER, fullscreen_vertex_shader_src)},
-        fragment_shader{compile_shader(GL_FRAGMENT_SHADER, fullscreen_fragment_shader_src)},
+        fragment_shader{compile_fragment_shader(src)},
         program{link_shader(vertex_shader, fragment_shader)},
         texture{make_texture(width, height)},
         framebuffer{make_framebuffer(texture)}
@@ -336,6 +325,26 @@ public:
     }
 
 private:
+    static GLuint compile_fragment_shader(GLchar const* fragment)
+    {
+        std::stringstream src;
+        src
+            <<
+            "#ifdef GL_ES\n"
+            "precision mediump float;\n"
+            "#endif\n"
+            << "\n"
+            << fragment
+            << "\n"
+            <<
+            "varying vec2 v_texcoord;\n"
+            "void main() {\n"
+            "    gl_FragColor = sample_to_rgba(v_texcoord);\n"
+            "}\n";
+
+        return compile_shader(GL_FRAGMENT_SHADER, src.str().c_str());
+    }
+
     static GLuint compile_shader(GLenum type, GLchar const* src)
     {
         GLuint id = glCreateShader(type);
@@ -442,13 +451,20 @@ auto make_output_current(std::unique_ptr<mg::gl::OutputSurface> output) -> std::
 }
 }
 
+const GLchar* invert_src =
+    "uniform sampler2D tex;\n"
+    "vec4 sample_to_rgba(in vec2 texcoord) {\n"
+    "   vec4 col = texture2D(tex, texcoord);\n"
+    "   return vec4(1.0 - col[0], 1.0 - col[1], 1.0 - col[2], col[3]);\n"
+    "}\n";
+
 mrg::Renderer::Renderer(
     std::shared_ptr<graphics::GLRenderingProvider> gl_interface,
     std::unique_ptr<graphics::gl::OutputSurface> output)
     : output_surface{make_output_current(std::move(output))},
       clear_color{0.0f, 0.0f, 0.0f, 1.0f},
       program_factory{std::make_unique<ProgramFactory>()},
-      fullscreen_shader{std::make_unique<FullscreenShader>(output_surface->size().width.as_value(), output_surface->size().height.as_value())},
+      fullscreen_shader{std::make_unique<FullscreenShader>(output_surface->size().width.as_value(), output_surface->size().height.as_value(), invert_src)},
       display_transform(1),
       gl_interface{std::move(gl_interface)}
 {
