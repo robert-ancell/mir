@@ -313,20 +313,19 @@ public:
 
     void render()
     {
-        // FIXME: Do once in constructor?
-        GLfloat vertices[] = {-1, -1, 4, -1, -1, 4};
-        GLfloat tex_coords[] = {0, 0, 2, 0, 0, 2};
-        glEnableVertexAttribArray(position_attrib);
-        glVertexAttribPointer(position_attrib, 2, GL_FLOAT, GL_FALSE, 0, vertices);
-        glEnableVertexAttribArray(texcoord_attrib);
-        glVertexAttribPointer(texcoord_attrib, 2, GL_FLOAT, GL_FALSE, 0, tex_coords);
-
         glUseProgram(program);
         glUniform1i(tex_uniform, 0);
 
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
 
+        // Draw a sigle right angle triangle that covers the whole output.
+        GLfloat vertices[] = {-1, -1, 4, -1, -1, 4};
+        GLfloat tex_coords[] = {0, 0, 2, 0, 0, 2};
+        glEnableVertexAttribArray(position_attrib);
+        glVertexAttribPointer(position_attrib, 2, GL_FLOAT, GL_FALSE, 0, vertices);
+        glEnableVertexAttribArray(texcoord_attrib);
+        glVertexAttribPointer(texcoord_attrib, 2, GL_FLOAT, GL_FALSE, 0, tex_coords);
         glDrawArrays(GL_TRIANGLES, 0, 3);
     }
 
