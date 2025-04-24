@@ -85,6 +85,7 @@ private:
 using ProgramHandle = GLHandle<&glDeleteProgram>;
 using ShaderHandle = GLHandle<&glDeleteShader>;
 
+// FIXME: Same as GLBulkHandle
 template<void (* deleter)(GLsizei, const GLuint*)>
 class GLMultiHandle
 {
@@ -298,7 +299,6 @@ const GLchar* fullscreen_vertex_shader_src =
     "   v_texcoord = texcoord;\n"
     "}\n";
 
-// FIXME: Namespace?
 class mrg::Renderer::FullscreenShader
 {
 public:
@@ -312,17 +312,33 @@ public:
     {
     }
 
-    // Note: shaders public to avoid ordering - can rework.
-    ShaderHandle const vertex_shader;
-    ShaderHandle const fragment_shader;
-    ProgramHandle const program;
-    TextureHandle const texture;
-    FramebufferHandle const framebuffer;
-
     void bind()
     {
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
     }
+
+   void render() 
+     {
+    GLint position_attrib = glGetAttribLocation(program, "position");
+    GLint texcoord_attrib = glGetAttribLocation(program, "texcoord");
+    GLint tex_uniform = glGetUniformLocation(program, "tex");
+
+    // FIXME: Do once in constructor?
+    GLfloat vertices[] = {-1, -1, 4, -1, -1, 4};
+    GLfloat tex_coords[] = {0, 0, 2, 0, 0, 2};
+    glEnableVertexAttribArray(position_attrib);
+    glVertexAttribPointer(position_attrib, 2, GL_FLOAT, GL_FALSE, 0, vertices);
+    glEnableVertexAttribArray(texcoord_attrib);
+    glVertexAttribPointer(texcoord_attrib, 2, GL_FLOAT, GL_FALSE, 0, tex_coords);
+
+    glUseProgram(program);
+    glUniform1i(tex_uniform, 0);
+
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    glDrawArrays(GL_TRIANGLES, 0, 3);
+     }
 
 private:
     static GLuint compile_fragment_shader(GLchar const* fragment)
@@ -420,6 +436,12 @@ private:
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); // FIXME: Restore existing or bad assumption in parent code?
         return fb;
     }
+
+    ShaderHandle const vertex_shader;
+    ShaderHandle const fragment_shader;
+    ProgramHandle const program;
+    TextureHandle const texture;
+    FramebufferHandle const framebuffer;
 };
 
 mrg::Renderer::Program::Program(GLuint program_id)
@@ -451,20 +473,12 @@ auto make_output_current(std::unique_ptr<mg::gl::OutputSurface> output) -> std::
 }
 }
 
-const GLchar* invert_src =
-    "uniform sampler2D tex;\n"
-    "vec4 sample_to_rgba(in vec2 texcoord) {\n"
-    "   vec4 col = texture2D(tex, texcoord);\n"
-    "   return vec4(1.0 - col[0], 1.0 - col[1], 1.0 - col[2], col[3]);\n"
-    "}\n";
-
 mrg::Renderer::Renderer(
     std::shared_ptr<graphics::GLRenderingProvider> gl_interface,
     std::unique_ptr<graphics::gl::OutputSurface> output)
     : output_surface{make_output_current(std::move(output))},
       clear_color{0.0f, 0.0f, 0.0f, 1.0f},
       program_factory{std::make_unique<ProgramFactory>()},
-      fullscreen_shader{std::make_unique<FullscreenShader>(output_surface->size().width.as_value(), output_surface->size().height.as_value(), invert_src)},
       display_transform(1),
       gl_interface{std::move(gl_interface)}
 {
@@ -533,7 +547,10 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
 {
     output_surface->make_current();
 
+    if (fullscreen_shader) 
+     {
     fullscreen_shader->bind();
+     }
 
     // Render elements.
     glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
@@ -546,31 +563,18 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
         draw(*r);
     }
 
+    if (fullscreen_shader) 
+     {
     // FIXME: Need to return to fb 0, update bind() to do this automatically
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+     }
 
     output_surface->bind();
 
-    GLuint program = fullscreen_shader->program;
-    GLint position_attrib = glGetAttribLocation(program, "position");
-    GLint texcoord_attrib = glGetAttribLocation(program, "texcoord");
-    GLint tex_uniform = glGetUniformLocation(program, "tex");
-
-    // FIXME: Do once in constructor?
-    GLfloat vertices[] = {-1, -1, 4, -1, -1, 4};
-    GLfloat tex_coords[] = {0, 0, 2, 0, 0, 2};
-    glEnableVertexAttribArray(position_attrib);
-    glVertexAttribPointer(position_attrib, 2, GL_FLOAT, GL_FALSE, 0, vertices);
-    glEnableVertexAttribArray(texcoord_attrib);
-    glVertexAttribPointer(texcoord_attrib, 2, GL_FLOAT, GL_FALSE, 0, tex_coords);
-
-    glUseProgram(program);
-    glUniform1i(tex_uniform, 0);
-
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, fullscreen_shader->texture);
-
-    glDrawArrays(GL_TRIANGLES, 0, 3);
+    if (fullscreen_shader) 
+     {
+	fullscreen_shader->render();
+     }
 
     auto output = output_surface->commit();
 
@@ -846,6 +850,28 @@ void mrg::Renderer::set_output_transform(glm::mat2 const& t)
         display_transform = new_display_transform;
         update_gl_viewport();
     }
+}
+
+const GLchar* invert_src =
+    "uniform sampler2D tex;\n"
+    "vec4 sample_to_rgba(in vec2 texcoord) {\n"
+    "   vec4 col = texture2D(tex, texcoord);\n"
+    "   return vec4(1.0 - col[0], 1.0 - col[1], 1.0 - col[2], col[3]);\n"
+    "}\n";
+
+void mrg::Renderer::set_output_filter(MirOutputFilter filter)
+{
+   GLchar const * filter_src;
+   switch(filter) 
+     {
+      case mir_output_filter_none:
+	fullscreen_shader = nullptr;
+	return;
+      case mir_output_filter_invert:
+	filter_src = invert_src;
+	break;
+     }
+   fullscreen_shader = std::make_unique<FullscreenShader>(output_surface->size().width.as_value(), output_surface->size().height.as_value(), filter_src);
 }
 
 void mrg::Renderer::suspend()

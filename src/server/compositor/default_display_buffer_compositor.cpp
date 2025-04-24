@@ -117,6 +117,8 @@ bool mc::DefaultDisplayBufferCompositor::composite(mc::SceneElementSequence&& sc
     {
         renderer->set_output_transform(display_sink.transformation());
         renderer->set_viewport(view_area);
+        // FIXME: Testing purposes only
+        renderer->set_output_filter(mir_output_filter_invert);
 
         display_sink.set_next_image(renderer->render(renderable_list));
 
