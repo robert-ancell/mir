@@ -306,9 +306,9 @@ public:
         tex_uniform = glGetUniformLocation(program, "tex");
     }
 
-    void bind()
+    GLuint get_framebuffer()
     {
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
+        return framebuffer;
     }
 
     void render()
@@ -553,16 +553,19 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
 {
     if (output_filter_shader)
     {
+        // Filter required, first render to a framebuffer...
         output_surface->make_current();
-        output_filter_shader->bind();
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, output_filter_shader->get_framebuffer());
         draw(renderables);
-        // FIXME: Need to return to fb 0, update bind() to do this automatically
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+        // ...then render to the output using the filter.
         output_surface->bind();
         output_filter_shader->render();
     }
     else
     {
+        // No filter rerquired, renderr directly to output.
         output_surface->make_current();
         output_surface->bind();
         draw(renderables);
