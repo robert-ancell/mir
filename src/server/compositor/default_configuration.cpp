@@ -55,7 +55,11 @@ mir::DefaultServerConfiguration::the_display_buffer_compositor_factory()
             std::string const output_filter_name(
                 the_options()->get<std::string>(options::output_filter_opt));
             MirOutputFilter output_filter = mir_output_filter_none;
-            if (output_filter_name == "invert")
+            if (output_filter_name == "grayscale")
+            {
+                output_filter = mir_output_filter_grayscale;
+            }
+            else if (output_filter_name == "invert")
             {
                 output_filter = mir_output_filter_invert;
             }

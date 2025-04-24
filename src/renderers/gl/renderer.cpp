@@ -857,6 +857,15 @@ void mrg::Renderer::set_output_transform(glm::mat2 const& t)
     }
 }
 
+// Shader that converts colors to grayscale.
+const GLchar* grayscale_src =
+    "uniform sampler2D tex;\n"
+    "vec4 sample_to_rgba(in vec2 texcoord) {\n"
+    "   vec4 col = texture2D(tex, texcoord);\n"
+    "   float s = (col[0] + col[1] + col[2]) / 3.0;\n"
+    "   return vec4(s, s, s, col[3]);\n"
+    "}\n";
+
 // Shader that inverts colors.
 const GLchar* invert_src =
     "uniform sampler2D tex;\n"
@@ -874,6 +883,9 @@ void mrg::Renderer::set_output_filter(MirOutputFilter filter)
     case mir_output_filter_none:
         output_filter_shader = nullptr;
         return;
+    case mir_output_filter_grayscale:
+        filter_src = grayscale_src;
+        break;
     case mir_output_filter_invert:
         filter_src = invert_src;
         break;

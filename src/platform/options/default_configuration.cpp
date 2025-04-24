@@ -181,7 +181,7 @@ mo::DefaultConfiguration::DefaultConfiguration(
             "Cursor (mouse pointer) to use [{auto,null,software}]")
         (output_filter_opt,
             po::value<std::string>()->default_value("none"),
-            "Output filter to use [{none, invert}]")
+            "Output filter to use [{none,grayscale,invert}]")
         (enable_key_repeat_opt, po::value<bool>()->default_value(true),
              "Enable server generated key repeat")
         (idle_timeout_opt, po::value<int>()->default_value(0),
