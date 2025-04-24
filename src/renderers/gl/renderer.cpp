@@ -290,21 +290,12 @@ private:
     std::mutex compilation_mutex;
 };
 
-const GLchar* fullscreen_vertex_shader_src =
-    "attribute vec2 position;\n"
-    "attribute vec2 texcoord;\n"
-    "varying vec2 v_texcoord;\n"
-    "void main() {\n"
-    "   gl_Position = vec4(position, 0, 1); \n"
-    "   v_texcoord = texcoord;\n"
-    "}\n";
-
 class mrg::Renderer::OutputFilterShader
 {
 public:
     // NOTE: This must be called with a current GL context
     OutputFilterShader(GLsizei width, GLsizei height, GLchar const* src)
-        : vertex_shader{compile_shader(GL_VERTEX_SHADER, fullscreen_vertex_shader_src)},
+        : vertex_shader{compile_vertex_shader()},
         fragment_shader{compile_fragment_shader(src)},
         program{link_shader(vertex_shader, fragment_shader)},
         texture{make_texture(width, height)},
@@ -341,6 +332,20 @@ public:
     }
 
 private:
+    static GLuint compile_vertex_shader()
+    {
+        const GLchar* src =
+            "attribute vec2 position;\n"
+            "attribute vec2 texcoord;\n"
+            "varying vec2 v_texcoord;\n"
+            "void main() {\n"
+            "   gl_Position = vec4(position, 0, 1); \n"
+            "   v_texcoord = texcoord;\n"
+            "}\n";
+
+        return compile_shader(GL_VERTEX_SHADER, src);
+    }
+
     static GLuint compile_fragment_shader(GLchar const* fragment)
     {
         std::stringstream src;
