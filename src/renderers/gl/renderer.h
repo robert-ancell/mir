@@ -98,6 +98,7 @@ protected:
 
     mutable long long frameno = 0;
 
+    virtual void draw(graphics::RenderableList const& renderables) const;
     virtual void draw(graphics::Renderable const& renderable) const;
 
 private:

@@ -551,35 +551,21 @@ void mrg::Renderer::tessellate(std::vector<mgl::Primitive>& primitives,
 
 auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::unique_ptr<mg::Framebuffer>
 {
-    output_surface->make_current();
-
     if (output_filter_shader)
     {
+        output_surface->make_current();
         output_filter_shader->bind();
-    }
-
-    // Render elements.
-    glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    ++frameno;
-    for (auto const& r : renderables)
-    {
-        draw(*r);
-    }
-
-    if (output_filter_shader)
-    {
+        draw(renderables);
         // FIXME: Need to return to fb 0, update bind() to do this automatically
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-    }
-
-    output_surface->bind();
-
-    if (output_filter_shader)
-    {
+        output_surface->bind();
         output_filter_shader->render();
+    }
+    else
+    {
+        output_surface->make_current();
+        output_surface->bind();
+        draw(renderables);
     }
 
     auto output = output_surface->commit();
@@ -589,6 +575,19 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
         mir::log_debug("GL error: %d", gl_error);
 
     return output;
+}
+
+void mrg::Renderer::draw(mg::RenderableList const& renderables) const
+{
+    glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    ++frameno;
+    for (auto const& r : renderables)
+    {
+        draw(*r);
+    }
 }
 
 void mrg::Renderer::draw(mg::Renderable const& renderable) const
