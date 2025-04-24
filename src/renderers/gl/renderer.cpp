@@ -301,6 +301,9 @@ public:
         texture{make_texture(width, height)},
         framebuffer{make_framebuffer(texture)}
     {
+        position_attrib = glGetAttribLocation(program, "position");
+        texcoord_attrib = glGetAttribLocation(program, "texcoord");
+        tex_uniform = glGetUniformLocation(program, "tex");
     }
 
     void bind()
@@ -310,10 +313,6 @@ public:
 
     void render()
     {
-        GLint position_attrib = glGetAttribLocation(program, "position");
-        GLint texcoord_attrib = glGetAttribLocation(program, "texcoord");
-        GLint tex_uniform = glGetUniformLocation(program, "tex");
-
         // FIXME: Do once in constructor?
         GLfloat vertices[] = {-1, -1, 4, -1, -1, 4};
         GLfloat tex_coords[] = {0, 0, 2, 0, 0, 2};
@@ -445,6 +444,9 @@ private:
     ShaderHandle const vertex_shader;
     ShaderHandle const fragment_shader;
     ProgramHandle const program;
+    GLint position_attrib;
+    GLint texcoord_attrib;
+    GLint tex_uniform;
     TextureHandle const texture;
     FramebufferHandle const framebuffer;
 };
