@@ -85,7 +85,6 @@ private:
 using ProgramHandle = GLHandle<&glDeleteProgram>;
 using ShaderHandle = GLHandle<&glDeleteShader>;
 
-// FIXME: Same as GLBulkHandle
 template<void (* deleter)(GLsizei, const GLuint*)>
 class GLMultiHandle
 {
@@ -436,7 +435,7 @@ private:
         glGenFramebuffers(1, &fb);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, fb);
         glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, tex, 0);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0); // FIXME: Restore existing or bad assumption in parent code?
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
         return fb;
     }
 
