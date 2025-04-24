@@ -105,8 +105,8 @@ private:
 
     class ProgramFactory;
     std::unique_ptr<ProgramFactory> const program_factory;
-    class FullscreenShader;
-    std::unique_ptr<FullscreenShader> fullscreen_shader;
+    class OutputFilterShader;
+    std::unique_ptr<OutputFilterShader> output_filter_shader;
     geometry::Rectangle viewport;
     glm::mat4 screen_to_gl_coords;
     glm::mat4 display_transform;

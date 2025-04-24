@@ -299,11 +299,11 @@ const GLchar* fullscreen_vertex_shader_src =
     "   v_texcoord = texcoord;\n"
     "}\n";
 
-class mrg::Renderer::FullscreenShader
+class mrg::Renderer::OutputFilterShader
 {
 public:
     // NOTE: This must be called with a current GL context
-    FullscreenShader(GLsizei width, GLsizei height, GLchar const* src)
+    OutputFilterShader(GLsizei width, GLsizei height, GLchar const* src)
         : vertex_shader{compile_shader(GL_VERTEX_SHADER, fullscreen_vertex_shader_src)},
         fragment_shader{compile_fragment_shader(src)},
         program{link_shader(vertex_shader, fragment_shader)},
@@ -317,28 +317,28 @@ public:
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, framebuffer);
     }
 
-   void render() 
-     {
-    GLint position_attrib = glGetAttribLocation(program, "position");
-    GLint texcoord_attrib = glGetAttribLocation(program, "texcoord");
-    GLint tex_uniform = glGetUniformLocation(program, "tex");
+    void render()
+    {
+        GLint position_attrib = glGetAttribLocation(program, "position");
+        GLint texcoord_attrib = glGetAttribLocation(program, "texcoord");
+        GLint tex_uniform = glGetUniformLocation(program, "tex");
 
-    // FIXME: Do once in constructor?
-    GLfloat vertices[] = {-1, -1, 4, -1, -1, 4};
-    GLfloat tex_coords[] = {0, 0, 2, 0, 0, 2};
-    glEnableVertexAttribArray(position_attrib);
-    glVertexAttribPointer(position_attrib, 2, GL_FLOAT, GL_FALSE, 0, vertices);
-    glEnableVertexAttribArray(texcoord_attrib);
-    glVertexAttribPointer(texcoord_attrib, 2, GL_FLOAT, GL_FALSE, 0, tex_coords);
+        // FIXME: Do once in constructor?
+        GLfloat vertices[] = {-1, -1, 4, -1, -1, 4};
+        GLfloat tex_coords[] = {0, 0, 2, 0, 0, 2};
+        glEnableVertexAttribArray(position_attrib);
+        glVertexAttribPointer(position_attrib, 2, GL_FLOAT, GL_FALSE, 0, vertices);
+        glEnableVertexAttribArray(texcoord_attrib);
+        glVertexAttribPointer(texcoord_attrib, 2, GL_FLOAT, GL_FALSE, 0, tex_coords);
 
-    glUseProgram(program);
-    glUniform1i(tex_uniform, 0);
+        glUseProgram(program);
+        glUniform1i(tex_uniform, 0);
 
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, texture);
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
 
-    glDrawArrays(GL_TRIANGLES, 0, 3);
-     }
+        glDrawArrays(GL_TRIANGLES, 0, 3);
+    }
 
 private:
     static GLuint compile_fragment_shader(GLchar const* fragment)
@@ -547,10 +547,10 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
 {
     output_surface->make_current();
 
-    if (fullscreen_shader) 
-     {
-    fullscreen_shader->bind();
-     }
+    if (output_filter_shader)
+    {
+        output_filter_shader->bind();
+    }
 
     // Render elements.
     glClearColor(clear_color[0], clear_color[1], clear_color[2], clear_color[3]);
@@ -563,18 +563,18 @@ auto mrg::Renderer::render(mg::RenderableList const& renderables) const -> std::
         draw(*r);
     }
 
-    if (fullscreen_shader) 
-     {
-    // FIXME: Need to return to fb 0, update bind() to do this automatically
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-     }
+    if (output_filter_shader)
+    {
+        // FIXME: Need to return to fb 0, update bind() to do this automatically
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    }
 
     output_surface->bind();
 
-    if (fullscreen_shader) 
-     {
-	fullscreen_shader->render();
-     }
+    if (output_filter_shader)
+    {
+        output_filter_shader->render();
+    }
 
     auto output = output_surface->commit();
 
@@ -852,6 +852,7 @@ void mrg::Renderer::set_output_transform(glm::mat2 const& t)
     }
 }
 
+// Shader that inverts colors.
 const GLchar* invert_src =
     "uniform sampler2D tex;\n"
     "vec4 sample_to_rgba(in vec2 texcoord) {\n"
@@ -861,17 +862,18 @@ const GLchar* invert_src =
 
 void mrg::Renderer::set_output_filter(MirOutputFilter filter)
 {
-   GLchar const * filter_src;
-   switch(filter) 
-     {
-      case mir_output_filter_none:
-	fullscreen_shader = nullptr;
-	return;
-      case mir_output_filter_invert:
-	filter_src = invert_src;
-	break;
-     }
-   fullscreen_shader = std::make_unique<FullscreenShader>(output_surface->size().width.as_value(), output_surface->size().height.as_value(), filter_src);
+    GLchar const * filter_src;
+    switch (filter)
+    {
+    default:
+    case mir_output_filter_none:
+        output_filter_shader = nullptr;
+        return;
+    case mir_output_filter_invert:
+        filter_src = invert_src;
+        break;
+    }
+    output_filter_shader = std::make_unique<OutputFilterShader>(output_surface->size().width.as_value(), output_surface->size().height.as_value(), filter_src);
 }
 
 void mrg::Renderer::suspend()
