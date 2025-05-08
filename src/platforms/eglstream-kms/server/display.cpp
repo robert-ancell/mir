@@ -366,7 +366,8 @@ public:
         }
         if (dynamic_cast<mg::CPUAddressableDisplayAllocator::Tag const*>(&type_tag))
         {
-            kms_allocator = mg::kms::CPUAddressableDisplayAllocator::create_if_supported(drm_node, output->size());
+            // FIXME: No gbm
+            kms_allocator = mg::kms::CPUAddressableDisplayAllocator::create_if_supported(drm_node, nullptr, output->size());
             return kms_allocator.get();
         }
         return nullptr;

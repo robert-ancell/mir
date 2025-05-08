@@ -19,6 +19,7 @@
 
 #include "mir/graphics/platform.h"
 #include <mir/fd.h>
+#include <gbm.h>
 
 namespace mir
 {
@@ -31,7 +32,7 @@ class CPUAddressableDisplayAllocator : public graphics::CPUAddressableDisplayAll
 public:
     /// Create an CPUAddressableDisplayAllocator if and only if supported by the device
     /// \return the provider, or an empty pointer
-    static auto create_if_supported(mir::Fd const& drm_fd, geometry::Size size)
+    static auto create_if_supported(mir::Fd const& drm_fd, std::shared_ptr<struct gbm_device> gbm, geometry::Size size)
         -> std::shared_ptr<CPUAddressableDisplayAllocator>;
 
     auto supported_formats() const
@@ -42,9 +43,11 @@ public:
 
     auto output_size() const -> geometry::Size override;
 private:
-    explicit CPUAddressableDisplayAllocator(mir::Fd drm_fd, geometry::Size size);
+    explicit CPUAddressableDisplayAllocator(mir::Fd drm_fd, std::shared_ptr<struct gbm_device> gbm, geometry::Size size);
 
     mir::Fd const drm_fd;
+    std::shared_ptr<struct gbm_device> const gbm;
+    std::vector<DRMFormat> const formats;
     bool const supports_modifiers;
     geometry::Size const size;
 };

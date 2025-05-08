@@ -246,7 +246,7 @@ auto mga::DisplaySink::maybe_create_allocator(DisplayAllocator::Tag const& type_
     {
         if (!kms_allocator)
         {
-            kms_allocator = kms::CPUAddressableDisplayAllocator::create_if_supported(drm_fd(), output->size());
+            kms_allocator = kms::CPUAddressableDisplayAllocator::create_if_supported(drm_fd(), gbm, output->size());
         }
         return kms_allocator.get();
     }

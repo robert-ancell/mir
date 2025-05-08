@@ -19,8 +19,26 @@
 #include <drm_fourcc.h>
 #include <xf86drm.h>
 
+namespace mg = mir::graphics;
+namespace geom = mir::geometry;
+
 namespace
 {
+auto get_supported_formats(struct gbm_device *gbm) -> std::vector<mg::DRMFormat>
+{
+    // FIXME: gbm can be nullptr in eglstream-kms case
+    std::vector<mg::DRMFormat> formats;
+    if (gbm_device_is_format_supported(gbm, GBM_BO_FORMAT_XRGB8888, 0))
+    {
+        formats.push_back(mg::DRMFormat{DRM_FORMAT_XRGB8888});
+    }
+    if (gbm_device_is_format_supported(gbm, GBM_BO_FORMAT_ARGB8888, 0))
+    {
+        formats.push_back(mg::DRMFormat{DRM_FORMAT_ARGB8888});
+    }
+    return formats;
+}
+
 auto drm_get_cap_checked(mir::Fd const& drm_fd, uint64_t cap) -> uint64_t
 {
     uint64_t value;
@@ -36,11 +54,10 @@ auto drm_get_cap_checked(mir::Fd const& drm_fd, uint64_t cap) -> uint64_t
 }
 }
 
-namespace mg = mir::graphics;
-namespace geom = mir::geometry;
-
-mg::kms::CPUAddressableDisplayAllocator::CPUAddressableDisplayAllocator(mir::Fd drm_fd, geom::Size size)
+mg::kms::CPUAddressableDisplayAllocator::CPUAddressableDisplayAllocator(mir::Fd drm_fd, std::shared_ptr<struct gbm_device> gbm, geom::Size size)
     : drm_fd{std::move(drm_fd)},
+      gbm{gbm},
+      formats{get_supported_formats(gbm.get())},
       supports_modifiers{drm_get_cap_checked(this->drm_fd, DRM_CAP_ADDFB2_MODIFIERS) == 1},
       size{size}
 {
@@ -49,8 +66,7 @@ mg::kms::CPUAddressableDisplayAllocator::CPUAddressableDisplayAllocator(mir::Fd 
 auto mg::kms::CPUAddressableDisplayAllocator::supported_formats() const
 -> std::vector<mg::DRMFormat>
 {
-    // TODO: Pull out of DRM info
-    return {mg::DRMFormat{DRM_FORMAT_XRGB8888}, mg::DRMFormat{DRM_FORMAT_ARGB8888}};
+    return formats;
 }
 
 auto mg::kms::CPUAddressableDisplayAllocator::alloc_fb(DRMFormat format) -> std::unique_ptr<MappableFB>
@@ -63,12 +79,12 @@ auto mg::kms::CPUAddressableDisplayAllocator::output_size() const -> geom::Size
     return size;
 }
 
-auto mir::graphics::kms::CPUAddressableDisplayAllocator::create_if_supported(mir::Fd const& drm_fd, geom::Size size)
+auto mir::graphics::kms::CPUAddressableDisplayAllocator::create_if_supported(mir::Fd const& drm_fd, std::shared_ptr<struct gbm_device> gbm, geom::Size size)
 -> std::shared_ptr<CPUAddressableDisplayAllocator>
 {
     if  (drm_get_cap_checked(drm_fd, DRM_CAP_DUMB_BUFFER))
     {
-        return std::shared_ptr<CPUAddressableDisplayAllocator>(new CPUAddressableDisplayAllocator{drm_fd, size});
+        return std::shared_ptr<CPUAddressableDisplayAllocator>(new CPUAddressableDisplayAllocator{drm_fd, gbm, size});
     }
     else
     {

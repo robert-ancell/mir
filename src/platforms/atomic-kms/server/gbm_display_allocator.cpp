@@ -25,8 +25,26 @@ namespace mg = mir::graphics;
 namespace mga = mir::graphics::atomic;
 namespace geom = mir::geometry;
 
+namespace
+{
+auto get_supported_formats(struct gbm_device *gbm) -> std::vector<mg::DRMFormat>
+{
+    std::vector<mg::DRMFormat> formats;
+    if (gbm_device_is_format_supported(gbm, GBM_BO_FORMAT_XRGB8888, 0))
+    {
+        formats.push_back(mg::DRMFormat{DRM_FORMAT_XRGB8888});
+    }
+    if (gbm_device_is_format_supported(gbm, GBM_BO_FORMAT_ARGB8888, 0))
+    {
+        formats.push_back(mg::DRMFormat{DRM_FORMAT_ARGB8888});
+    }
+    return formats;
+}
+}
+
 mga::GBMDisplayAllocator::GBMDisplayAllocator(mir::Fd drm_fd, std::shared_ptr<struct gbm_device> gbm, geom::Size size)
     : fd{std::move(drm_fd)},
+      formats{get_supported_formats(gbm.get())},
       gbm{std::move(gbm)},
       size{size}
 {
@@ -34,8 +52,7 @@ mga::GBMDisplayAllocator::GBMDisplayAllocator(mir::Fd drm_fd, std::shared_ptr<st
 
 auto mga::GBMDisplayAllocator::supported_formats() const -> std::vector<DRMFormat>
 {
-    // TODO: Pull out of KMS plane info
-    return { DRMFormat{DRM_FORMAT_XRGB8888}, DRMFormat{DRM_FORMAT_ARGB8888}};
+    return formats;
 }
 
 auto mga::GBMDisplayAllocator::modifiers_for_format(DRMFormat /*format*/) const -> std::vector<uint64_t>

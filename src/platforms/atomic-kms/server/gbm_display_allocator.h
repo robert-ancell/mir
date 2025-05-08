@@ -31,6 +31,7 @@ public:
     auto make_surface(DRMFormat format, std::span<uint64_t> modifier) -> std::unique_ptr<GBMSurface> override;
 private:
     mir::Fd const fd;
+    std::vector<DRMFormat> const formats;
     std::shared_ptr<struct gbm_device> const gbm;
     geometry::Size const size;
 };
