@@ -26,13 +26,13 @@ namespace
 {
 auto get_supported_formats(struct gbm_device *gbm) -> std::vector<mg::DRMFormat>
 {
-    // FIXME: gbm can be nullptr in eglstream-kms case
+    // NOTE: eglstream-kms does not have a gbm_device, so we just assume all formats in this case. Remove this when eglstream-kms is no longer supported.
     std::vector<mg::DRMFormat> formats;
-    if (gbm_device_is_format_supported(gbm, GBM_BO_FORMAT_XRGB8888, 0))
+    if (gbm == nullptr || gbm_device_is_format_supported(gbm, GBM_BO_FORMAT_XRGB8888, 0))
     {
         formats.push_back(mg::DRMFormat{DRM_FORMAT_XRGB8888});
     }
-    if (gbm_device_is_format_supported(gbm, GBM_BO_FORMAT_ARGB8888, 0))
+    if (gbm == nullptr || gbm_device_is_format_supported(gbm, GBM_BO_FORMAT_ARGB8888, 0))
     {
         formats.push_back(mg::DRMFormat{DRM_FORMAT_ARGB8888});
     }
