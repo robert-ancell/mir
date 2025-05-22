@@ -51,6 +51,8 @@ namespace mt  = mir::test;
 namespace mtd = mir::test::doubles;
 namespace mtf = mir_test_framework;
 
+// FIXME: MockDRM
+
 namespace
 {
 
