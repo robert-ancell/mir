@@ -209,15 +209,20 @@ public:
     MOCK_METHOD(void*, mmap, (void* addr, size_t length, int prot, int flags, int fd, off_t offset));
     MOCK_METHOD(int, munmap, (void* addr, size_t length));
 
+    uint32_t add_property(char const* device, char const* name);
     void add_crtc(
         char const* device,
         uint32_t id,
-        drmModeModeInfo mode);
+        drmModeModeInfo mode,
+        std::vector<uint32_t> prop_ids = {},
+	std::vector<uint64_t> prop_values = {});
     void add_encoder(
         char const* device,
         uint32_t encoder_id,
         uint32_t crtc_id,
-        uint32_t possible_crtcs_mask);
+        uint32_t possible_crtcs_mask,
+        std::vector<uint32_t> prop_ids = {},
+	std::vector<uint64_t> prop_values = {});
     void add_connector(
         char const* device,
         uint32_t connector_id,
@@ -227,7 +232,23 @@ public:
         std::vector<drmModeModeInfo>& modes,
         std::vector<uint32_t>& possible_encoder_ids,
         geometry::Size const& physical_size,
-        drmModeSubPixel subpixel_arrangement = DRM_MODE_SUBPIXEL_UNKNOWN);
+        drmModeSubPixel subpixel_arrangement = DRM_MODE_SUBPIXEL_UNKNOWN,
+        std::vector<uint32_t> prop_ids = {},
+	std::vector<uint64_t> prop_values = {});
+    void add_plane(
+        char const* device,
+	std::vector<uint32_t>& formats,
+	uint32_t plane_id,
+	uint32_t crtc_id,
+        uint32_t fb_id,
+	uint32_t crtc_x,
+	uint32_t crtc_y,
+	uint32_t x,
+        uint32_t y,
+	uint32_t possible_crtcs_mask,
+	uint32_t gamma_size,
+        std::vector<uint32_t> prop_ids = {},
+	std::vector<uint64_t> prop_values = {});
 
     void prepare(char const* device);
     void reset(char const* device);

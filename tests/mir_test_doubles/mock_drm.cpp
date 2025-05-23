@@ -204,7 +204,7 @@ void mtd::FakeDRMResources::reset()
     plane_ids.clear();
 }
 
-uint32_t mtd::FakeDRMResources::add_property(const char *name)
+uint32_t mtd::FakeDRMResources::add_property(char const* name)
 {
     properties.insert({next_prop_id, name});
     return next_prop_id++;
@@ -617,18 +617,30 @@ mtd::MockDRM::~MockDRM() noexcept
     global_mock = nullptr;
 }
 
-void mtd::MockDRM::add_crtc(char const *device, uint32_t id, drmModeModeInfo mode)
+uint32_t mtd::MockDRM::add_property(char const *device, char const* name)
 {
-    fake_drms[device].add_crtc(id, mode);
+    return fake_drms[device].add_property(name);
+}
+
+void mtd::MockDRM::add_crtc(
+    char const *device,
+    uint32_t id,
+    drmModeModeInfo mode,
+    std::vector<uint32_t> prop_ids,
+    std::vector<uint64_t> prop_values)
+{
+    fake_drms[device].add_crtc(id, mode, prop_ids, prop_values);
 }
 
 void mtd::MockDRM::add_encoder(
     char const *device,
     uint32_t encoder_id,
     uint32_t crtc_id,
-    uint32_t possible_crtcs_mask)
+    uint32_t possible_crtcs_mask,
+    std::vector<uint32_t> prop_ids,
+    std::vector<uint64_t> prop_values)
 {
-    fake_drms[device].add_encoder(encoder_id, crtc_id, possible_crtcs_mask);
+    fake_drms[device].add_encoder(encoder_id, crtc_id, possible_crtcs_mask, prop_ids, prop_values);
 }
 
 void mtd::MockDRM::prepare(char const *device)
@@ -673,7 +685,9 @@ void mtd::MockDRM::add_connector(
     std::vector<drmModeModeInfo> &modes,
     std::vector<uint32_t> &possible_encoder_ids,
     geometry::Size const &physical_size,
-    drmModeSubPixel subpixel_arrangement)
+    drmModeSubPixel subpixel_arrangement,
+    std::vector<uint32_t> prop_ids,
+    std::vector<uint64_t> prop_values)
 {
     fake_drms[device].add_connector(
         connector_id,
@@ -683,7 +697,39 @@ void mtd::MockDRM::add_connector(
         modes,
         possible_encoder_ids,
         physical_size,
-        subpixel_arrangement);
+        subpixel_arrangement,
+        prop_ids,
+        prop_values);
+}
+
+void mtd::MockDRM::add_plane(
+    char const *device,
+    std::vector<uint32_t>& formats,
+    uint32_t plane_id,
+    uint32_t crtc_id,
+    uint32_t fb_id,
+    uint32_t crtc_x,
+    uint32_t crtc_y,
+    uint32_t x,
+    uint32_t y,
+    uint32_t possible_crtcs_mask,
+    uint32_t gamma_size,
+    std::vector<uint32_t> prop_ids,
+    std::vector<uint64_t> prop_values)
+{
+    fake_drms[device].add_plane(
+        formats,
+        plane_id,
+        crtc_id,
+        fb_id,
+        crtc_x,
+        crtc_y,
+        x,
+        y,
+        possible_crtcs_mask,
+        gamma_size,
+        prop_ids,
+        prop_values);
 }
 
 MATCHER_P2(IsFdOfDevice, devname, fds, "")
